@@ -2,9 +2,10 @@ package com.edutech.comentarios.dto;
 
 import java.time.LocalDate;
 import lombok.Data;
+import org.springframework.hateoas.RepresentationModel;
 
 @Data
-public class ComentarioDTO {
+public class ComentarioDTO extends RepresentationModel<ComentarioDTO> {
 
     private Integer idComentario;
     private int calificacion;
