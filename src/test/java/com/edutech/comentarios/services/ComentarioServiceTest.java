@@ -23,7 +23,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+// Se importa assertThat y assertThatThrownBy de AssertJ
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -57,7 +59,6 @@ class ComentarioServiceTest {
         curso.setIdCurso(101);
         curso.setNombreCurso("Curso de Mockito");
 
-        // CORRECCIÓN 1: Se usa el constructor vacío y los setters para los DTOs.
         UsuarioInfoDTO usuarioInfo = new UsuarioInfoDTO();
         usuarioInfo.setIdUser(1);
         usuarioInfo.setUsername("testuser");
@@ -86,66 +87,85 @@ class ComentarioServiceTest {
     @Test
     @DisplayName("Debería guardar un comentario exitosamente")
     void testGuardar() {
+        // Arrange
         when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
         when(cursoRepository.findById(101)).thenReturn(Optional.of(curso));
         when(comentarioRepository.save(any(Comentario.class))).thenReturn(comentario);
 
+        // Act
         ComentarioDTO resultado = comentarioService.guardar(comentarioDTO);
 
-        assertNotNull(resultado);
-        assertEquals(1, resultado.getIdComentario());
-        assertEquals("testuser", resultado.getUsuario().getUsername());
+        // Assert: Usando AssertJ
+        assertThat(resultado).isNotNull();
+        assertThat(resultado.getIdComentario()).isEqualTo(1);
+        assertThat(resultado.getUsuario().getUsername()).isEqualTo("testuser");
+
         verify(comentarioRepository, times(1)).save(any(Comentario.class));
     }
 
     @Test
     @DisplayName("Debería lanzar EntityNotFoundException si el usuario no existe al guardar")
     void testGuardarComentarioUsuarioNoEncontrado() {
+        // Arrange
         when(usuarioRepository.findById(1)).thenReturn(Optional.empty());
 
-        // CORRECCIÓN 2: Se simplifica la lambda de "statement" a "expression".
-        assertThrows(EntityNotFoundException.class,
-                () -> comentarioService.guardar(comentarioDTO),
-                "Debería lanzar EntityNotFoundException"
-        );
+        // Act & Assert: Usando assertThatThrownBy de AssertJ
+        assertThatThrownBy(() -> comentarioService.guardar(comentarioDTO))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("Usuario no encontrado");
 
         verify(comentarioRepository, never()).save(any());
     }
 
+
     @Test
     @DisplayName("Debería listar todos los comentarios")
     void testListarComentarios() {
+        // Arrange
         when(comentarioRepository.findAll()).thenReturn(List.of(comentario));
+
+        // Act
         List<ComentarioDTO> resultados = comentarioService.listar();
-        assertFalse(resultados.isEmpty());
-        assertEquals(1, resultados.size());
+
+        // Assert
+        assertThat(resultados).isNotEmpty().hasSize(1);
+        assertThat(resultados.get(0).getComentario()).isEqualTo("¡Gran curso!");
     }
 
     @Test
     @DisplayName("Debería devolver una lista vacía si no hay comentarios")
     void testListarComentariosVacios() {
+        // Arrange
         when(comentarioRepository.findAll()).thenReturn(Collections.emptyList());
+
+        // Act
         List<ComentarioDTO> resultados = comentarioService.listar();
-        assertTrue(resultados.isEmpty());
+
+        // Assert
+        assertThat(resultados).isEmpty();
     }
 
     @Test
     @DisplayName("Debería obtener un comentario por su ID")
     void testObtenerPorId() {
+        // Arrange
         when(comentarioRepository.findById(1)).thenReturn(Optional.of(comentario));
+
+        // Act
         Optional<ComentarioDTO> resultado = comentarioService.obtenerPorId(1);
-        assertTrue(resultado.isPresent());
-        assertEquals(1, resultado.get().getIdComentario());
+
+        // Assert
+        assertThat(resultado).isPresent();
+        assertThat(resultado.get().getIdComentario()).isEqualTo(1);
     }
 
     @Test
     @DisplayName("Debería actualizar un comentario existente")
     void testActualizarComentario() {
-        // CORRECCIÓN 3: Se usa el constructor vacío y los setters también aquí.
+        // Arrange
         UsuarioInfoDTO usuarioInfo = new UsuarioInfoDTO();
         usuarioInfo.setIdUser(1);
         usuarioInfo.setUsername("testuser");
-
         CursoInfoDTO cursoInfo = new CursoInfoDTO();
         cursoInfo.setIdCurso(101);
         cursoInfo.setNombreCurso("Curso de Mockito");
@@ -162,46 +182,71 @@ class ComentarioServiceTest {
         when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
         when(cursoRepository.findById(101)).thenReturn(Optional.of(curso));
 
+        // Act
         Optional<ComentarioDTO> resultado = comentarioService.actualizar(1, dtoActualizado);
 
-        assertTrue(resultado.isPresent());
+        // Assert
+        assertThat(resultado).isPresent();
+        assertThat(resultado.get().getComentario()).isEqualTo("Comentario actualizado");
+        assertThat(resultado.get().getCalificacion()).isEqualTo(4);
+
         verify(comentarioRepository, times(1)).save(any(Comentario.class));
     }
 
     @Test
     @DisplayName("Debería eliminar un comentario si existe")
     void testEliminarComentario() {
+        // Arrange
         when(comentarioRepository.existsById(1)).thenReturn(true);
         doNothing().when(comentarioRepository).deleteById(1);
+
+        // Act
         boolean resultado = comentarioService.eliminar(1);
-        assertTrue(resultado);
+
+        // Assert
+        assertThat(resultado).isTrue();
         verify(comentarioRepository, times(1)).deleteById(1);
     }
 
     @Test
     @DisplayName("No debería eliminar un comentario si no existe")
     void testEliminarComentarioNoExistente() {
+        // Arrange
         when(comentarioRepository.existsById(99)).thenReturn(false);
+
+        // Act
         boolean resultado = comentarioService.eliminar(99);
-        assertFalse(resultado);
+
+        // Assert
+        assertThat(resultado).isFalse();
         verify(comentarioRepository, never()).deleteById(99);
     }
 
     @Test
     @DisplayName("Debería buscar comentarios por ID de curso")
     void testBuscarPorCurso() {
+        // Arrange
         when(comentarioRepository.findByCursoIdCurso(101)).thenReturn(List.of(comentario));
+
+        // Act
         List<ComentarioDTO> resultados = comentarioService.buscarPorCurso(101);
-        assertEquals(1, resultados.size());
-        assertEquals(101, resultados.get(0).getCurso().getIdCurso());
+
+        // Assert
+        assertThat(resultados).isNotEmpty();
+        assertThat(resultados.get(0).getCurso().getIdCurso()).isEqualTo(101);
     }
 
     @Test
     @DisplayName("Debería buscar comentarios por ID de usuario")
     void testBuscarPorUsuario() {
+        // Arrange
         when(comentarioRepository.findByUsuarioIdUser(1)).thenReturn(List.of(comentario));
+
+        // Act
         List<ComentarioDTO> resultados = comentarioService.buscarPorUsuario(1);
-        assertEquals(1, resultados.size());
-        assertEquals(1, resultados.get(0).getUsuario().getIdUser());
+
+        // Assert
+        assertThat(resultados).isNotEmpty();
+        assertThat(resultados.get(0).getUsuario().getIdUser()).isEqualTo(1);
     }
 }
